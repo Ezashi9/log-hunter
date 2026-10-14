@@ -82,7 +82,7 @@ sample-report/  example output from the Loghub dataset
 
 - **[IOC Enricher](https://github.com/Ezashi9/ioc-enricher)** (done): reads `alerts.json` and checks each flagged IP against AbuseIPDB threat intelligence.
 - **Honeypot:** run a decoy SSH server on a throwaway cloud VM so Log Hunter analyses live attacks rather than a historical dataset.
-- **Dashboard:** a web view of all of the above.
+- **[Dashboard](https://github.com/Ezashi9/home-soc-dashboard)** (done, [live demo](https://ezashi9.github.io/home-soc-dashboard/)): a web view of all of the above.
 
 ## Ethics and legal
 
