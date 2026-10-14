@@ -80,7 +80,7 @@ sample-report/  example output from the Loghub dataset
 
 ## Next steps
 
-- **IOC Enricher:** look up each `flagged_ips` entry against threat-intelligence APIs (AbuseIPDB) and add country and network owner.
+- **[IOC Enricher](https://github.com/Ezashi9/ioc-enricher)** (done): reads `alerts.json` and checks each flagged IP against AbuseIPDB threat intelligence.
 - **Honeypot:** run a decoy SSH server on a throwaway cloud VM so Log Hunter analyses live attacks rather than a historical dataset.
 - **Dashboard:** a web view of all of the above.
 
