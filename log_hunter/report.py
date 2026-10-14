@@ -23,7 +23,17 @@ def summarise(events: list[Event]) -> dict:
         "top_attacking_ips": Counter(e.ip for e in failed).most_common(10),
         "top_targeted_usernames": Counter(e.user for e in failed if e.user).most_common(10),
         "failed_on_nonexistent_accounts": sum(e.invalid_user for e in failed),
+        "failed_logins_timeline": _timeline(failed, timedelta(minutes=10)),
     }
+
+
+def _timeline(failed: list[Event], bucket: timedelta) -> list[list]:
+    """Failed logins per bucket, including empty buckets so quiet periods show as zero."""
+    if not failed:
+        return []
+    start = min(e.time for e in failed)
+    counts = Counter(int((e.time - start) / bucket) for e in failed)
+    return [[(start + bucket * i).isoformat(), counts.get(i, 0)] for i in range(max(counts) + 1)]
 
 
 def print_console(summary: dict, alerts: list[Alert]) -> None:

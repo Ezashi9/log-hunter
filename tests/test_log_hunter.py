@@ -69,5 +69,14 @@ class DetectorTests(unittest.TestCase):
         self.assertEqual(by_ip["5.5.5.5"].severity, "info")
 
 
+class ReportTests(unittest.TestCase):
+    def test_timeline_includes_empty_buckets(self):
+        from log_hunter.report import summarise
+        lines = [failed("10:00:00", "1.1.1.1"), failed("10:01:00", "1.1.1.1"), failed("10:25:00", "1.1.1.1")]
+        timeline = summarise(list(parse_lines(lines, 2020)))["failed_logins_timeline"]
+        self.assertEqual([count for _, count in timeline], [2, 0, 1])
+        self.assertEqual(timeline[0][0], "2020-12-10T10:00:00")
+
+
 if __name__ == "__main__":
     unittest.main()
