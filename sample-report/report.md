@@ -27,7 +27,7 @@
 | medium | username_spray | T1110 | 103.99.0.122 | tried 19 different usernames | 2025-12-10 09:11:20 | 2025-12-10 11:04:45 |
 | medium | username_spray | T1110 | 183.62.140.253 | tried 10 different usernames | 2025-12-10 10:54:27 | 2025-12-10 11:04:43 |
 | medium | username_spray | T1110 | 5.188.10.180 | tried 7 different usernames | 2025-12-10 08:24:32 | 2025-12-10 08:26:24 |
-| info | clean_login | - | 119.137.62.142 | login as 'fztu' with 0 prior failures from this IP (looks normal) | 2025-12-10 09:32:20 | 2025-12-10 09:32:20 |
+| info | clean_login | - | 119.137.62.142 | login as 'fztu' with 0 failures from this IP in the last 1 hour (looks normal) | 2025-12-10 09:32:20 | 2025-12-10 09:32:20 |
 
 ## Most-targeted usernames
 

@@ -92,7 +92,12 @@ class AttackMappingTests(unittest.TestCase):
         return run_all(list(parse_lines(lines, 2020)), 10, timedelta(minutes=5), 5)
 
     def test_every_rule_is_mapped(self):
-        self.assertEqual({a.rule for a in self._alerts()}, set(ATTACK_MAPPING))
+        from detection_tests.scenarios import build
+        rules = set()
+        for sc in build():
+            events = list(parse_lines(sc.lines, 2020))
+            rules |= {a.rule for a in run_all(events, 10, timedelta(minutes=5), 5)}
+        self.assertEqual(rules, set(ATTACK_MAPPING))
 
     def test_alerts_carry_expected_techniques(self):
         by_rule = {a.rule: a for a in self._alerts()}

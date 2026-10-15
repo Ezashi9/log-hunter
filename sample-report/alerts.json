@@ -209,11 +209,12 @@
       "ip": "119.137.62.142",
       "first_seen": "2025-12-10T09:32:20",
       "last_seen": "2025-12-10T09:32:20",
-      "detail": "login as 'fztu' with 0 prior failures from this IP (looks normal)",
+      "detail": "login as 'fztu' with 0 failures from this IP in the last 1 hour (looks normal)",
       "usernames": [
         "fztu"
       ],
       "count": 0,
+      "sources": [],
       "attack_ids": [],
       "attack_tactics": []
     },
@@ -237,6 +238,7 @@
         "zhangyan"
       ],
       "count": 286,
+      "sources": [],
       "attack_ids": [
         "T1110.001"
       ],
@@ -282,6 +284,7 @@
         "www"
       ],
       "count": 80,
+      "sources": [],
       "attack_ids": [
         "T1110.001"
       ],
@@ -318,6 +321,7 @@
         "uucp"
       ],
       "count": 46,
+      "sources": [],
       "attack_ids": [
         "T1110.001"
       ],
@@ -338,6 +342,7 @@
         "utsims"
       ],
       "count": 26,
+      "sources": [],
       "attack_ids": [
         "T1110.001"
       ],
@@ -362,6 +367,7 @@
         "guest"
       ],
       "count": 20,
+      "sources": [],
       "attack_ids": [
         "T1110.001"
       ],
@@ -383,6 +389,7 @@
         "api"
       ],
       "count": 18,
+      "sources": [],
       "attack_ids": [
         "T1110.001"
       ],
@@ -428,6 +435,7 @@
         "www"
       ],
       "count": 28,
+      "sources": [],
       "attack_ids": [
         "T1110"
       ],
@@ -464,6 +472,7 @@
         "uucp"
       ],
       "count": 19,
+      "sources": [],
       "attack_ids": [
         "T1110"
       ],
@@ -491,6 +500,7 @@
         "zhangyan"
       ],
       "count": 10,
+      "sources": [],
       "attack_ids": [
         "T1110"
       ],
@@ -515,6 +525,7 @@
         "guest"
       ],
       "count": 7,
+      "sources": [],
       "attack_ids": [
         "T1110"
       ],

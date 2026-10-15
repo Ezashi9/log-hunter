@@ -25,9 +25,10 @@ Full output: [sample-report/report.md](sample-report/report.md)
 
 | Rule | Severity | Logic | Why this way |
 |---|---|---|---|
-| `brute_force` | high | ≥ 10 failed logins from one IP inside any **sliding** 5-minute window | A lifetime total would eventually flag a real user who mistypes a password once a week. A fixed clock window (e.g. 10:00–10:05) can miss a burst split across the boundary, such as 9 attempts at 10:04 and 9 at 10:06. A sliding window catches both. |
+| `brute_force` | high | ≥ 10 failed logins from one IP inside any **sliding** 5-minute window, **or** ≥ 30 inside any 1-hour window | A lifetime total would eventually flag a real user who mistypes a password once a week. A fixed clock window (e.g. 10:00–10:05) can miss a burst split across the boundary, such as 9 attempts at 10:04 and 9 at 10:06. A sliding window catches both. The 1-hour window catches "low and slow" guessing that deliberately stays under the 5-minute limit. |
+| `distributed_brute_force` | medium | one account receives failed logins from ≥ 10 **different** IPs within 10 minutes | Botnets spread guesses across many addresses so no single IP crosses a per-IP limit. Grouping by the *targeted account* instead catches the campaign. |
 | `username_spray` | medium | one IP tries ≥ 5 **different** usernames | Repeated tries on one account is password guessing. Many accounts means the attacker is trying to find which ones exist, which is a different behaviour worth separating. |
-| `success_after_failure` | high | a successful login from an IP with ≥ 3 earlier failures | This is the alert that matters most: it may mean a guessed password worked. |
+| `success_after_failure` | high | a successful login from an IP with ≥ 3 failures **in the previous hour** | This is the alert that matters most: it may mean a guessed password worked. Only recent failures count, because a few typos spread across a week are normal. |
 | `clean_login` | info | a successful login with no meaningful failures | Logged so successful access is still visible, but not raised as an alarm. Too many false alarms train people to ignore alerts. |
 
 All thresholds can be changed from the command line.
@@ -39,6 +40,7 @@ All thresholds can be changed from the command line.
 | Rule | ATT&CK technique | Tactic | Sigma rule |
 |---|---|---|---|
 | `brute_force` | T1110.001 Brute Force: Password Guessing | Credential Access | [`correlation_lnx_sshd_brute_force.yml`](sigma/correlation_lnx_sshd_brute_force.yml) |
+| `distributed_brute_force` | T1110 Brute Force | Credential Access | [`correlation_lnx_sshd_distributed_brute_force.yml`](sigma/correlation_lnx_sshd_distributed_brute_force.yml) |
 | `username_spray` | T1110 Brute Force | Credential Access | [`correlation_lnx_sshd_username_spray.yml`](sigma/correlation_lnx_sshd_username_spray.yml) |
 | `success_after_failure` | T1110 Brute Force, then T1078 Valid Accounts | Credential Access, Initial Access | [`correlation_lnx_sshd_success_after_failure.yml`](sigma/correlation_lnx_sshd_success_after_failure.yml) |
 | `clean_login` | none (normal activity) | none | [`lnx_sshd_accepted_login.yml`](sigma/lnx_sshd_accepted_login.yml) |
@@ -48,6 +50,43 @@ Every alert in `alerts.json` carries `attack_ids` and `attack_tactics`, and the 
 **Why `username_spray` isn't mapped to Password Spraying (T1110.003).** Password spraying means trying one common password against many accounts. My rule sees one IP trying many usernames, but sshd never logs the password, so I can't tell spraying apart from password guessing (T1110.001) or credential stuffing with leaked username and password pairs (T1110.004). The honest mapping is the parent technique, Brute Force (T1110).
 
 **Notes on the Sigma rules.** Each threshold rule uses a Sigma correlation (`event_count`, `value_count` or `temporal_ordered`) on top of a simple base rule in the same file. They assume the SIEM extracts the source address into a `src_ip` field and the account into `user`. They pass `sigma check` with the SigmaHQ validators. Some details differ from the Python version: Log Hunter uses a sliding window, while SIEMs usually count in fixed time buckets, and the username and success-after-failure rules look back 24 hours and 1 hour instead of over the whole log. `success_after_failure` uses `temporal_ordered`, which not every SIEM backend supports yet (the Splunk backend doesn't).
+
+## Detection testing: 10 attack scenarios with known answers
+
+Passing on one real log file doesn't prove a detector works. So I wrote 10 labelled scenarios ([`detection_tests/scenarios.py`](detection_tests/scenarios.py)): generated sshd log lines where I know in advance which alerts *should* fire, including normal activity that should raise nothing. All IPs come from documentation-only address ranges. Each scenario is scored for **missed detections** and **false alarms**:
+
+| Scenario | First version | Now |
+|---|---|---|
+| Fast brute force (30 guesses in 60 s) | pass | pass |
+| Real user, two typos then login | pass | pass |
+| Real user, typos spread over a week, then login | **false alarm** | pass |
+| Low and slow (1 guess every 2 min for 80 min) | **missed** | pass |
+| Distributed (20 IPs, 2 guesses each, same account) | **missed** | pass |
+| Username spraying | pass | pass |
+| IPv6 brute force | **missed** | pass |
+| Compressed syslog lines (`message repeated 6 times`) | pass | pass |
+| Attacker-crafted usernames (HTML, shell characters, Unicode, 200 characters) | pass | pass |
+| Successful break-in (15 guesses, then login) | pass | pass |
+| **Total** | **6 / 10** | **10 / 10** |
+
+What the four failures taught me:
+
+1. **IPv6 attacks were invisible.** The parser only recognised IPv4 addresses, so 30 attack lines from an IPv6 address produced **zero** events, with no error. A tool that silently ignores data is worse than one that crashes. It now accepts both.
+2. **Low and slow guessing slipped under the threshold.** An attacker making one guess every 2 minutes never hits 10 in 5 minutes. Added a second, longer window (30 in an hour).
+3. **Distributed attacks were invisible to per-IP rules.** 20 IPs × 2 guesses each look harmless one at a time. Added `distributed_brute_force`, which groups by the *account being attacked* instead of the attacker.
+4. **A real user's typos caused a false alarm.** `success_after_failure` counted failures forever, so three typos over a week plus a normal login looked like a break-in. It now only counts failures from the last hour.
+
+After the fixes, the real Loghub results didn't change: same alerts, no new false alarms.
+
+Run it yourself:
+
+```bash
+python -m detection_tests.run
+```
+
+The scenario suite is also part of the unit tests, so a change that breaks any detection fails the build.
+
+**Known limits.** Thresholds are a trade-off: an attacker who stays under 10 in 5 minutes *and* 30 an hour from one IP, from fewer than 10 IPs at a time, won't be flagged. A determined attacker can always study published thresholds, which is why real SOCs combine rules like these with blocking tools (e.g. fail2ban), key-only SSH logins and threat intelligence.
 
 ## Problems I hit (and fixed)
 
@@ -90,10 +129,11 @@ python -m unittest discover -s tests -t .
 ```
 log_hunter/
   parser.py     raw log lines -> structured events
-  detectors.py  the three detection rules
+  detectors.py  the detection rules
   report.py     console output, Markdown, JSON and charts
   __main__.py   command-line interface
 sigma/          the same detections as Sigma rules, for use in a SIEM
+detection_tests/ labelled attack and normal-activity scenarios, and the scorer
 tests/          unit tests for the parser, every rule, the ATT&CK mapping and the Sigma files
 sample-report/  example output from the Loghub dataset
 ```

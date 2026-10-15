@@ -1,0 +1,53 @@
+title: OpenSSH Failed Password Against Named Account
+id: 6c436060-a8f8-41e2-b7ce-f87b051c8260
+name: log_hunter_sshd_failed_password_distributed
+status: experimental
+description: |
+    Base rule for the distributed brute force correlation below. Matches a single failed SSH password attempt.
+    Assumes the SIEM extracts the source address into src_ip and the targeted account into user; rename them to match your field mapping.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110
+logsource:
+    product: linux
+    service: sshd
+detection:
+    keywords:
+        - 'Failed password for '
+    condition: keywords
+falsepositives:
+    - Users mistyping their password
+level: informational
+---
+title: OpenSSH Distributed Brute Force Against One Account
+id: 6da4d649-2166-4b8b-adbf-21417a8c675c
+status: experimental
+description: |
+    Detects one account receiving failed SSH logins from 10 or more different source IPs within 10 minutes.
+    Botnets spread guesses across many addresses so that no single IP crosses a per-source threshold; grouping by the targeted account instead catches the campaign.
+    Mirrors the distributed_brute_force rule in Log Hunter, which was added after a synthetic test scenario showed the per-IP rules missed this pattern.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110
+correlation:
+    type: value_count
+    rules:
+        - log_hunter_sshd_failed_password_distributed
+    group-by:
+        - user
+    timespan: 10m
+    condition:
+        field: src_ip
+        gte: 10
+falsepositives:
+    - A shared service account used from many machines with an expired or rotated password
+    - Users behind many different mobile or VPN addresses all mistyping the same shared account
+level: medium

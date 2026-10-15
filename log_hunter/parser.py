@@ -7,18 +7,19 @@ LINE_RE = re.compile(
     r"^(?P<ts>[A-Z][a-z]{2}\s+\d{1,2} \d{2}:\d{2}:\d{2}) (?P<host>\S+) sshd\[(?P<pid>\d+)\]: (?P<msg>.*)$"
 )
 
+# Source addresses can be IPv4 or IPv6: an IPv4-only pattern silently drops IPv6 attackers.
 # Usernames are attacker-controlled and can contain spaces, so match lazily up to " from <ip>".
 FAILED_RE = re.compile(
-    r"Failed (?P<method>\S+) for (?P<invalid>invalid user )?(?P<user>.*?) from (?P<ip>[\d.]+) port \d+"
+    r"Failed (?P<method>\S+) for (?P<invalid>invalid user )?(?P<user>.*?) from (?P<ip>[0-9A-Fa-f:.]+) port \d+"
 )
 ACCEPTED_RE = re.compile(
-    r"Accepted (?P<method>\S+) for (?P<user>\S+) from (?P<ip>[\d.]+) port \d+"
+    r"Accepted (?P<method>\S+) for (?P<user>\S+) from (?P<ip>[0-9A-Fa-f:.]+) port \d+"
 )
-INVALID_USER_RE = re.compile(r"^Invalid user (?P<user>.*?) from (?P<ip>[\d.]+)")
+INVALID_USER_RE = re.compile(r"^Invalid user (?P<user>.*?) from (?P<ip>[0-9A-Fa-f:.]+)")
 # syslog collapses identical lines into one "message repeated N times" line.
 REPEATED_RE = re.compile(r"^message repeated (?P<n>\d+) times: \[ (?P<inner>.*)\]$")
 BREAKIN_RE = re.compile(
-    r"reverse mapping checking getaddrinfo for \S+ \[(?P<ip>[\d.]+)\] failed - POSSIBLE BREAK-IN ATTEMPT!"
+    r"reverse mapping checking getaddrinfo for \S+ \[(?P<ip>[0-9A-Fa-f:.]+)\] failed - POSSIBLE BREAK-IN ATTEMPT!"
 )
 
 
