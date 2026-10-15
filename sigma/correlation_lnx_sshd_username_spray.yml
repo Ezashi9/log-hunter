@@ -1,0 +1,53 @@
+title: OpenSSH Failed Login Or Invalid User
+id: 29d74956-7c14-4e10-ad2b-5f6f7852b080
+name: log_hunter_sshd_failed_or_invalid_user
+status: experimental
+description: |
+    Base rule for the username spray correlation below. Matches a failed SSH password attempt or a login attempt for an account that does not exist.
+    Assumes the SIEM extracts the source address into src_ip and the attempted account into user; rename them to match your field mapping.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110
+logsource:
+    product: linux
+    service: sshd
+detection:
+    keywords:
+        - 'Failed password for '
+        - 'Invalid user '
+    condition: keywords
+falsepositives:
+    - Users mistyping their username or password
+level: informational
+---
+title: OpenSSH Many Usernames From Single Source
+id: e3c5bff0-cabe-41a0-8a9e-0420a5b7d65b
+status: experimental
+description: |
+    Detects one source IP trying 5 or more different usernames over SSH, which suggests the attacker is guessing which accounts exist.
+    Mirrors the username_spray rule in Log Hunter. Log Hunter counts usernames across the whole log, so a 24 hour timespan is used here as an approximation.
+    Mapped to the parent Brute Force technique because SSH logs do not record the passwords tried, so password spraying cannot be told apart from password guessing or credential stuffing.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110
+correlation:
+    type: value_count
+    rules:
+        - log_hunter_sshd_failed_or_invalid_user
+    group-by:
+        - src_ip
+    timespan: 24h
+    condition:
+        field: user
+        gte: 5
+falsepositives:
+    - A shared jump host or NAT gateway where several real users mistype their logins
+level: medium

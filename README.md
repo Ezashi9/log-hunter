@@ -1,5 +1,7 @@
 # Log Hunter
 
+[![Tests](https://github.com/Ezashi9/log-hunter/actions/workflows/ci.yml/badge.svg)](https://github.com/Ezashi9/log-hunter/actions/workflows/ci.yml)
+
 A Python tool that reads OpenSSH server logs and detects attacks: brute-force password guessing, username spraying, and successful logins that follow failed attempts (a sign a password may have been guessed).
 
 It's the first part of **Home SOC**, a small security operations centre I'm building piece by piece. Log Hunter's JSON output is designed to feed the next tool, which checks attacker IPs against threat-intelligence sources.
@@ -30,6 +32,23 @@ Full output: [sample-report/report.md](sample-report/report.md)
 
 All thresholds can be changed from the command line.
 
+## Detections mapped to MITRE ATT&CK and Sigma
+
+[MITRE ATT&CK](https://attack.mitre.org/) is a public catalogue of attacker techniques, each with an ID such as `T1110`. [Sigma](https://github.com/SigmaHQ/sigma) is a vendor-neutral format for writing detection rules that can be converted into queries for Splunk, Elastic and other SIEMs. Mapping alerts to ATT&CK lets a SOC see which techniques it can and can't detect, and Sigma means the same logic can run in whatever tool the team already uses.
+
+| Rule | ATT&CK technique | Tactic | Sigma rule |
+|---|---|---|---|
+| `brute_force` | T1110.001 Brute Force: Password Guessing | Credential Access | [`correlation_lnx_sshd_brute_force.yml`](sigma/correlation_lnx_sshd_brute_force.yml) |
+| `username_spray` | T1110 Brute Force | Credential Access | [`correlation_lnx_sshd_username_spray.yml`](sigma/correlation_lnx_sshd_username_spray.yml) |
+| `success_after_failure` | T1110 Brute Force, then T1078 Valid Accounts | Credential Access, Initial Access | [`correlation_lnx_sshd_success_after_failure.yml`](sigma/correlation_lnx_sshd_success_after_failure.yml) |
+| `clean_login` | none (normal activity) | none | [`lnx_sshd_accepted_login.yml`](sigma/lnx_sshd_accepted_login.yml) |
+
+Every alert in `alerts.json` carries `attack_ids` and `attack_tactics`, and the report shows the technique next to each alert.
+
+**Why `username_spray` isn't mapped to Password Spraying (T1110.003).** Password spraying means trying one common password against many accounts. My rule sees one IP trying many usernames, but sshd never logs the password, so I can't tell spraying apart from password guessing (T1110.001) or credential stuffing with leaked username and password pairs (T1110.004). The honest mapping is the parent technique, Brute Force (T1110).
+
+**Notes on the Sigma rules.** Each threshold rule uses a Sigma correlation (`event_count`, `value_count` or `temporal_ordered`) on top of a simple base rule in the same file. They assume the SIEM extracts the source address into a `src_ip` field and the account into `user`. They pass `sigma check` with the SigmaHQ validators. Some details differ from the Python version: Log Hunter uses a sliding window, while SIEMs usually count in fixed time buckets, and the username and success-after-failure rules look back 24 hours and 1 hour instead of over the whole log. `success_after_failure` uses `temporal_ordered`, which not every SIEM backend supports yet (the Splunk backend doesn't).
+
 ## Problems I hit (and fixed)
 
 Checking the tool's numbers against the raw log found two bugs, both now covered by tests:
@@ -41,7 +60,7 @@ Syslog timestamps also don't include a year. The tool assumes the most recent da
 
 ## Usage
 
-Requires Python 3.10+. Charts need `matplotlib`; everything else is the standard library.
+Requires Python 3.10+. Charts need `matplotlib` and the Sigma rule tests need `pyyaml`; the tool itself only uses the standard library.
 
 ```bash
 python -m venv .venv
@@ -74,7 +93,8 @@ log_hunter/
   detectors.py  the three detection rules
   report.py     console output, Markdown, JSON and charts
   __main__.py   command-line interface
-tests/          unit tests for the parser and every rule
+sigma/          the same detections as Sigma rules, for use in a SIEM
+tests/          unit tests for the parser, every rule, the ATT&CK mapping and the Sigma files
 sample-report/  example output from the Loghub dataset
 ```
 

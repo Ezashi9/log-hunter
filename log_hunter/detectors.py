@@ -4,6 +4,16 @@ from datetime import datetime, timedelta
 
 from .parser import Event
 
+# MITRE ATT&CK (Enterprise) techniques and the tactics they serve in each rule.
+# username_spray maps to the parent T1110: sshd logs don't record passwords,
+# so spraying (.003) can't be told apart from guessing (.001) or stuffing (.004).
+ATTACK_MAPPING: dict[str, tuple[list[str], list[str]]] = {
+    "brute_force": (["T1110.001"], ["Credential Access"]),
+    "username_spray": (["T1110"], ["Credential Access"]),
+    "success_after_failure": (["T1110", "T1078"], ["Credential Access", "Initial Access"]),
+    "clean_login": ([], []),
+}
+
 
 @dataclass
 class Alert:
@@ -15,6 +25,13 @@ class Alert:
     detail: str
     usernames: list[str] = field(default_factory=list)
     count: int = 0
+    attack_ids: list[str] = field(default_factory=list)
+    attack_tactics: list[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        if not self.attack_ids and not self.attack_tactics:
+            ids, tactics = ATTACK_MAPPING.get(self.rule, ([], []))
+            self.attack_ids, self.attack_tactics = list(ids), list(tactics)
 
 
 def detect_brute_force(events: list[Event], threshold: int = 10, window: timedelta = timedelta(minutes=5)) -> list[Alert]:

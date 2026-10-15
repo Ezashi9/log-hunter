@@ -1,0 +1,22 @@
+title: OpenSSH Successful Login
+id: 4c3c5507-9e88-40bf-95b3-d029e8c8474b
+status: experimental
+description: |
+    Records every successful SSH login so normal access stays visible. Mirrors the clean_login rule in Log Hunter.
+    This is an informational event, not an alert. Logins that follow several failures are covered by correlation_lnx_sshd_success_after_failure.yml.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+logsource:
+    product: linux
+    service: sshd
+detection:
+    keywords:
+        - 'Accepted password for '
+        - 'Accepted publickey for '
+        - 'Accepted keyboard-interactive'
+    condition: keywords
+falsepositives:
+    - Every legitimate login
+level: informational

@@ -213,7 +213,9 @@
       "usernames": [
         "fztu"
       ],
-      "count": 0
+      "count": 0,
+      "attack_ids": [],
+      "attack_tactics": []
     },
     {
       "rule": "brute_force",
@@ -234,7 +236,13 @@
         "ubuntu",
         "zhangyan"
       ],
-      "count": 286
+      "count": 286,
+      "attack_ids": [
+        "T1110.001"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "brute_force",
@@ -273,7 +281,13 @@
         "vnc",
         "www"
       ],
-      "count": 80
+      "count": 80,
+      "attack_ids": [
+        "T1110.001"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "brute_force",
@@ -303,7 +317,13 @@
         "user",
         "uucp"
       ],
-      "count": 46
+      "count": 46,
+      "attack_ids": [
+        "T1110.001"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "brute_force",
@@ -317,7 +337,13 @@
         "root",
         "utsims"
       ],
-      "count": 26
+      "count": 26,
+      "attack_ids": [
+        "T1110.001"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "brute_force",
@@ -335,7 +361,13 @@
         "ftp",
         "guest"
       ],
-      "count": 20
+      "count": 20,
+      "attack_ids": [
+        "T1110.001"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "brute_force",
@@ -350,7 +382,13 @@
         "admin",
         "api"
       ],
-      "count": 18
+      "count": 18,
+      "attack_ids": [
+        "T1110.001"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "username_spray",
@@ -389,7 +427,13 @@
         "vnc",
         "www"
       ],
-      "count": 28
+      "count": 28,
+      "attack_ids": [
+        "T1110"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "username_spray",
@@ -419,7 +463,13 @@
         "user",
         "uucp"
       ],
-      "count": 19
+      "count": 19,
+      "attack_ids": [
+        "T1110"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "username_spray",
@@ -440,7 +490,13 @@
         "ubuntu",
         "zhangyan"
       ],
-      "count": 10
+      "count": 10,
+      "attack_ids": [
+        "T1110"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     },
     {
       "rule": "username_spray",
@@ -458,7 +514,13 @@
         "ftp",
         "guest"
       ],
-      "count": 7
+      "count": 7,
+      "attack_ids": [
+        "T1110"
+      ],
+      "attack_tactics": [
+        "Credential Access"
+      ]
     }
   ]
 }

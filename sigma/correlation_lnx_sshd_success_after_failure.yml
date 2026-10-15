@@ -1,0 +1,109 @@
+title: OpenSSH Failed Password Before Success
+id: 06807360-e367-4a4a-bdfb-fdba78e00204
+name: log_hunter_sshd_failed_password_for_success
+status: experimental
+description: |
+    Base rule for the success after failure correlation below. Matches a single failed SSH password attempt.
+    Assumes the SIEM extracts the source address into the field src_ip; rename it to match your field mapping.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110
+logsource:
+    product: linux
+    service: sshd
+detection:
+    keywords:
+        - 'Failed password for '
+    condition: keywords
+falsepositives:
+    - Users mistyping their password
+level: informational
+---
+title: OpenSSH Three Or More Failed Passwords
+id: 11664c97-d06f-4db9-80a2-599bbff0f453
+name: log_hunter_sshd_three_failures
+status: experimental
+description: Intermediate correlation used by the rule below. Three or more failed SSH passwords from one source IP within an hour.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110
+correlation:
+    type: event_count
+    rules:
+        - log_hunter_sshd_failed_password_for_success
+    group-by:
+        - src_ip
+    timespan: 1h
+    condition:
+        gte: 3
+falsepositives:
+    - Users mistyping their password a few times
+level: low
+---
+title: OpenSSH Accepted Login After Failures
+id: 1e6308ec-6ffb-4a16-a673-0a51c35a0aad
+name: log_hunter_sshd_accepted_for_success
+status: experimental
+description: |
+    Base rule for the success after failure correlation below. Matches a successful SSH login.
+    Assumes the SIEM extracts the source address into the field src_ip; rename it to match your field mapping.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.initial-access
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.stealth
+    - attack.t1078
+logsource:
+    product: linux
+    service: sshd
+detection:
+    keywords:
+        - 'Accepted password for '
+        - 'Accepted publickey for '
+        - 'Accepted keyboard-interactive'
+    condition: keywords
+falsepositives:
+    - Every legitimate login
+level: informational
+---
+title: OpenSSH Successful Login After Failed Passwords
+id: bc363e5a-621b-49c5-871c-069b5599dbaa
+status: experimental
+description: |
+    Detects a successful SSH login from a source IP that failed to log in at least 3 times shortly before, which may mean a guessed password worked.
+    Mirrors the success_after_failure rule in Log Hunter. Log Hunter looks back over the whole log; this rule looks back 1 hour.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110
+    - attack.initial-access
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.stealth
+    - attack.t1078
+correlation:
+    type: temporal_ordered
+    rules:
+        - log_hunter_sshd_three_failures
+        - log_hunter_sshd_accepted_for_success
+    group-by:
+        - src_ip
+    timespan: 1h
+falsepositives:
+    - A real user who mistyped their password several times before getting it right
+level: high

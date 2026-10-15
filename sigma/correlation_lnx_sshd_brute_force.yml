@@ -1,0 +1,51 @@
+title: OpenSSH Failed Password
+id: a5462383-57fd-4d24-b048-627f5d833215
+name: log_hunter_sshd_failed_password
+status: experimental
+description: |
+    Base rule for the brute force correlation below. Matches a single failed SSH password attempt.
+    Assumes the SIEM extracts the source address into the field src_ip; rename it to match your field mapping.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110.001
+logsource:
+    product: linux
+    service: sshd
+detection:
+    keywords:
+        - 'Failed password for '
+    condition: keywords
+falsepositives:
+    - Users mistyping their password
+level: informational
+---
+title: OpenSSH Brute Force From Single Source
+id: e92335ab-bcc7-4b77-9307-6ad3c5bf05b5
+status: experimental
+description: |
+    Detects 10 or more failed SSH password attempts from one source IP within 5 minutes, which points to automated password guessing.
+    Mirrors the brute_force rule in Log Hunter. Log Hunter uses a sliding window; how timespan is bucketed depends on the SIEM backend.
+references:
+    - https://github.com/Ezashi9/log-hunter
+author: Eisa Chaudry
+date: 2026-10-15
+tags:
+    - attack.credential-access
+    - attack.t1110.001
+correlation:
+    type: event_count
+    rules:
+        - log_hunter_sshd_failed_password
+    group-by:
+        - src_ip
+    timespan: 5m
+    condition:
+        gte: 10
+falsepositives:
+    - A misconfigured script or service retrying with an old password
+    - Vulnerability scanners run by your own team
+level: high

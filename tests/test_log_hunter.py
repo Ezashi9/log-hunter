@@ -1,7 +1,14 @@
+import json
+import tempfile
 import unittest
+import uuid
 from datetime import timedelta
+from pathlib import Path
 
-from log_hunter.detectors import detect_brute_force, detect_success_after_failure, detect_username_spray
+import yaml
+
+from log_hunter.detectors import (ATTACK_MAPPING, detect_brute_force, detect_success_after_failure,
+                                  detect_username_spray, run_all)
 from log_hunter.parser import parse_lines
 
 
@@ -76,6 +83,84 @@ class ReportTests(unittest.TestCase):
         timeline = summarise(list(parse_lines(lines, 2020)))["failed_logins_timeline"]
         self.assertEqual([count for _, count in timeline], [2, 0, 1])
         self.assertEqual(timeline[0][0], "2020-12-10T10:00:00")
+
+
+class AttackMappingTests(unittest.TestCase):
+    def _alerts(self):
+        lines = [failed(f"10:00:{s:02d}", "9.9.9.9", user=f"user{s % 6}") for s in range(12)]
+        lines += [accepted("10:01:00", "9.9.9.9", "root"), accepted("10:02:00", "5.5.5.5", "alice")]
+        return run_all(list(parse_lines(lines, 2020)), 10, timedelta(minutes=5), 5)
+
+    def test_every_rule_is_mapped(self):
+        self.assertEqual({a.rule for a in self._alerts()}, set(ATTACK_MAPPING))
+
+    def test_alerts_carry_expected_techniques(self):
+        by_rule = {a.rule: a for a in self._alerts()}
+        self.assertEqual(by_rule["brute_force"].attack_ids, ["T1110.001"])
+        self.assertEqual(by_rule["username_spray"].attack_ids, ["T1110"])
+        self.assertEqual(by_rule["success_after_failure"].attack_ids, ["T1110", "T1078"])
+        self.assertIn("Initial Access", by_rule["success_after_failure"].attack_tactics)
+        self.assertEqual(by_rule["clean_login"].attack_ids, [])
+        self.assertEqual(by_rule["brute_force"].attack_tactics, ["Credential Access"])
+
+    def test_mapping_ids_are_well_formed(self):
+        for ids, tactics in ATTACK_MAPPING.values():
+            for t in ids:
+                self.assertRegex(t, r"^T\d{4}(\.\d{3})?$")
+            self.assertEqual(bool(ids), bool(tactics))
+
+    def test_alerts_json_keeps_old_fields_and_adds_attack(self):
+        from log_hunter.report import write_json
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "alerts.json"
+            write_json(path, {}, self._alerts())
+            data = json.loads(path.read_text(encoding="utf-8"))
+        old = {"rule", "severity", "ip", "first_seen", "last_seen", "detail", "usernames", "count"}
+        for a in data["alerts"]:
+            self.assertLessEqual(old | {"attack_ids", "attack_tactics"}, set(a))
+
+
+SIGMA_DIR = Path(__file__).resolve().parent.parent / "sigma"
+SIGMA_REQUIRED = {"title", "id", "status", "description", "references", "author", "date", "level", "falsepositives"}
+
+
+class SigmaRuleTests(unittest.TestCase):
+    def _docs(self):
+        files = sorted(SIGMA_DIR.glob("*.yml"))
+        self.assertGreaterEqual(len(files), 4)
+        for f in files:
+            for doc in yaml.safe_load_all(f.read_text(encoding="utf-8")):
+                yield f, doc
+
+    def test_every_rule_has_required_keys(self):
+        for f, doc in self._docs():
+            with self.subTest(file=f.name, title=doc.get("title")):
+                self.assertLessEqual(SIGMA_REQUIRED, set(doc))
+                self.assertEqual(uuid.UUID(doc["id"]).version, 4)
+                self.assertEqual(doc["author"], "Eisa Chaudry")
+                if "correlation" in doc:
+                    self.assertTrue({"type", "rules", "group-by", "timespan"} <= set(doc["correlation"]))
+                else:
+                    self.assertEqual(doc["logsource"], {"product": "linux", "service": "sshd"})
+                    self.assertIn("condition", doc["detection"])
+
+    def test_ids_are_unique_and_references_resolve(self):
+        docs = [d for _, d in self._docs()]
+        ids = [d["id"] for d in docs]
+        self.assertEqual(len(ids), len(set(ids)))
+        names = {d["name"] for d in docs if "name" in d}
+        for d in docs:
+            for ref in d.get("correlation", {}).get("rules", []):
+                self.assertIn(ref, names | set(ids))
+
+    def test_sigma_tags_match_python_mapping(self):
+        for rule, (ids, _) in ATTACK_MAPPING.items():
+            if not ids:
+                continue
+            f = SIGMA_DIR / f"correlation_lnx_sshd_{rule}.yml"
+            top = list(yaml.safe_load_all(f.read_text(encoding="utf-8")))[-1]
+            self.assertEqual({t for t in top["tags"] if t.startswith("attack.t")},
+                             {f"attack.{i.lower()}" for i in ids})
 
 
 if __name__ == "__main__":

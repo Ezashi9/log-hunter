@@ -45,7 +45,8 @@ def print_console(summary: dict, alerts: list[Alert]) -> None:
     print(f"  Attacking IPs:      {summary['unique_attacking_ips']}\n")
 
     for a in sorted(alerts, key=lambda a: (SEVERITY_ORDER[a.severity], -a.count)):
-        print(f"[{a.severity.upper():6}] {a.rule:22} {a.ip:16} {a.detail}")
+        attack = f" [{', '.join(a.attack_ids)}]" if a.attack_ids else ""
+        print(f"[{a.severity.upper():6}] {a.rule:22} {a.ip:16} {a.detail}{attack}")
     print()
 
 
@@ -133,11 +134,12 @@ def write_markdown(path: Path, summary: dict, alerts: list[Alert], charts: list[
         "",
         "## Alerts",
         "",
-        "| Severity | Rule | IP | Detail | First seen | Last seen |",
-        "|---|---|---|---|---|---|",
+        "| Severity | Rule | ATT&CK | IP | Detail | First seen | Last seen |",
+        "|---|---|---|---|---|---|---|",
     ]
     for a in sorted(alerts, key=lambda a: (SEVERITY_ORDER[a.severity], -a.count)):
-        lines.append(f"| {a.severity} | {a.rule} | {a.ip} | {a.detail} | "
+        attack = ", ".join(a.attack_ids) or "-"
+        lines.append(f"| {a.severity} | {a.rule} | {attack} | {a.ip} | {a.detail} | "
                      f"{a.first_seen:%Y-%m-%d %H:%M:%S} | {a.last_seen:%Y-%m-%d %H:%M:%S} |")
 
     lines += ["", "## Most-targeted usernames", "", "| Username | Failed attempts |", "|---|---|"]
